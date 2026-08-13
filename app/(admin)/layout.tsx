@@ -1,4 +1,4 @@
-import { AdminSidebar } from "@/components/navigation/AdminNav";
+import { AdminSidebar, AdminTopBar, AdminMobileBar } from "@/components/navigation/AdminNav";
 import { requireAdminProfile } from "@/lib/admin/guard";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -10,9 +10,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="md:flex">
       <AdminSidebar />
-      <main id="main-content" className="flex-1 min-w-0 container-page py-8">
-        {children}
-      </main>
+      <div className="flex-1 min-w-0">
+        <AdminTopBar />
+        <main id="main-content" className="container-page py-8 pb-24 md:pb-8">
+          {children}
+        </main>
+        <AdminMobileBar />
+      </div>
     </div>
   );
 }
