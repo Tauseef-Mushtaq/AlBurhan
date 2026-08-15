@@ -6,3 +6,4 @@
 
 export class PracticeActionError extends Error {}
 export class SettingsActionError extends Error {}
+export class AdhkarTargetActionError extends Error {}

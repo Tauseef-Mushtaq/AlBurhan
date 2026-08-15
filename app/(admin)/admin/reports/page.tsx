@@ -8,7 +8,8 @@ import { ReportCsvButton } from "@/components/admin/ReportCsvButton";
 import { PlatformReportDownloadButtons } from "@/components/admin/PlatformReportDownloadButtons";
 import { getAdminReport } from "@/lib/admin/queries";
 import { addDays, getTodayInTimezone, DEFAULT_TIMEZONE } from "@/lib/date";
-import { Users, Activity, CheckCircle2, Star } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Users, Activity, CheckCircle2, Star, FileBarChart } from "lucide-react";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -86,6 +87,9 @@ export default async function AdminReportsPage({
                 csv: t.reports.csv,
                 cancel: t.reports.cancel,
                 generating: t.reports.generating,
+            generatingPdf: t.reports.generatingPdf,
+            generatingImage: t.reports.generatingImage,
+            generatingCsv: t.reports.generatingCsv,
                 error: t.reports.error,
               }}
             />
@@ -107,9 +111,13 @@ export default async function AdminReportsPage({
           </h3>
         </div>
         <div className="space-y-5 px-6 py-6">
-          {report.categoryCompletion.map((c) => (
-            <BreakdownBar key={c.categoryId} label={c.name} value={c.completionRate} />
-          ))}
+          {report.categoryCompletion.length === 0 ? (
+            <EmptyState icon={FileBarChart} title={r.noData} />
+          ) : (
+            report.categoryCompletion.map((c) => (
+              <BreakdownBar key={c.categoryId} label={c.name} value={c.completionRate} />
+            ))
+          )}
         </div>
       </Card>
     </div>

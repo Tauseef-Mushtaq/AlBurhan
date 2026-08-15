@@ -4,8 +4,41 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isLocale, defaultLocale } from '@/lib/i18n/config';
 
-function fail(page: 'login' | 'signup', message: string): never {
-  redirect(`/${page}?error=${encodeURIComponent(message)}`);
+function fail(page: 'login' | 'signup', code: string): never {
+  redirect(`/${page}?error=${encodeURIComponent(code)}`);
+}
+
+/**
+ * Supabase's auth error messages are an internal implementation detail —
+ * they can change wording between versions and occasionally include
+ * information (like confirming an email exists) that shouldn't be shown
+ * verbatim. This maps the handful of cases users actually hit to a fixed,
+ * safe error CODE (never the raw message), which the login/signup pages
+ * then look up in the locale dictionary. Anything unrecognized falls back
+ * to a single generic code rather than ever forwarding error.message.
+ */
+function safeAuthErrorCode(page: 'login' | 'signup', message: string): string {
+  const m = message.toLowerCase();
+  if (page === 'login') {
+    if (m.includes('invalid login credentials') || m.includes('invalid email or password')) {
+      return 'invalid_credentials';
+    }
+    if (m.includes('email not confirmed')) {
+      return 'email_not_confirmed';
+    }
+    return 'generic';
+  }
+  // signup
+  if (m.includes('already registered') || m.includes('already exists') || m.includes('user already')) {
+    return 'email_taken';
+  }
+  if (m.includes('password')) {
+    return 'weak_password';
+  }
+  if (m.includes('invalid') && m.includes('email')) {
+    return 'invalid_email';
+  }
+  return 'generic';
 }
 
 export async function signUpAction(formData: FormData) {
@@ -19,13 +52,13 @@ export async function signUpAction(formData: FormData) {
     : defaultLocale;
 
   if (!name || !email || !password) {
-    fail('signup', 'Please fill in every field.');
+    fail('signup', 'missing_fields');
   }
   if (password !== confirmPassword) {
-    fail('signup', 'Passwords do not match.');
+    fail('signup', 'password_mismatch');
   }
   if (password.length < 8) {
-    fail('signup', 'Password must be at least 8 characters.');
+    fail('signup', 'weak_password');
   }
 
   const supabase = createClient();
@@ -40,7 +73,7 @@ export async function signUpAction(formData: FormData) {
   });
 
   if (error) {
-    fail('signup', error.message);
+    fail('signup', safeAuthErrorCode('signup', error.message));
   }
 
   // Profile creation now happens via the on_auth_user_created trigger
@@ -71,14 +104,14 @@ export async function signInAction(formData: FormData) {
   const next = String(formData.get('next') ?? '/app');
 
   if (!email || !password) {
-    fail('login', 'Please enter your email and password.');
+    fail('login', 'missing_fields');
   }
 
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    fail('login', error.message);
+    fail('login', safeAuthErrorCode('login', error.message));
   }
 
   redirect(next.startsWith('/') ? next : '/app');

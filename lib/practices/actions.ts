@@ -69,9 +69,28 @@ function assertPlausibleDate(dateStr: string) {
 }
 
 /**
+ * A performed value can legitimately exceed its target (e.g. someone
+ * raises their own bar and does 75 when the target is 50) — this is NOT
+ * clamped. This sanity bound exists only to reject garbage/abusive input
+ * (NaN, Infinity, absurd numbers), not to cap genuine over-performance.
+ */
+const MAX_SANE_PRACTICE_VALUE = 1_000_000;
+
+/**
  * Sets a quantitative practice's value for a date (e.g. the +/- counter).
- * The server clamps to [0, target] and derives `completed` from the
- * clamped value — client-side validation is a convenience only.
+ *
+ * Target resolution: if a log already exists for this (user, item, date),
+ * its own target_value snapshot is authoritative and is never rewritten —
+ * that's what keeps a past day's report stable even after the user later
+ * changes their configured target (see 0007_adhkar_custom_targets.sql).
+ * Only when creating the FIRST log row for a given day is the applicable
+ * target resolved (from the user's custom setting, falling back to the
+ * item's built-in default) and snapshotted.
+ *
+ * The performed value itself is clamped to [0, MAX_SANE_PRACTICE_VALUE]
+ * only — it is deliberately NOT capped at the target, since exceeding a
+ * target is valid and must be preserved exactly everywhere (dashboard,
+ * history, PDF, image, CSV).
  */
 export async function updatePracticeValueAction(input: {
   practiceItemId: string;
@@ -83,20 +102,55 @@ export async function updatePracticeValueAction(input: {
   const user = await requireUser();
   const item = await assertValidPracticeItem(supabase, input.practiceItemId);
 
-  const clampedValue = Math.min(item.target_value, Math.max(0, Math.round(input.value)));
-  const completed = isPracticeComplete(clampedValue, item.target_value);
-
-  const { error } = await supabase.from("daily_practice_logs").upsert(
-    {
-      user_id: user.id,
-      practice_item_id: item.id,
-      date: input.date,
-      completed,
-      value: clampedValue,
-      completed_at: completed ? new Date().toISOString() : null,
-    },
-    { onConflict: "user_id,practice_item_id,date" }
+  const clampedValue = Math.min(
+    MAX_SANE_PRACTICE_VALUE,
+    Math.max(0, Math.round(input.value))
   );
+
+  const { data: existing } = await supabase
+    .from("daily_practice_logs")
+    .select("id, target_value")
+    .eq("user_id", user.id)
+    .eq("practice_item_id", item.id)
+    .eq("date", input.date)
+    .maybeSingle();
+
+  let targetValue: number;
+  if (existing) {
+    // Row already exists — its snapshot is the only source of truth for
+    // this day's target. Never overwritten, regardless of what the
+    // user's settings say now.
+    targetValue = existing.target_value;
+  } else {
+    const { data: setting } = await supabase
+      .from("user_practice_settings")
+      .select("target_value")
+      .eq("user_id", user.id)
+      .eq("practice_item_id", item.id)
+      .maybeSingle();
+    targetValue = setting?.target_value ?? item.target_value;
+  }
+
+  const completed = isPracticeComplete(clampedValue, targetValue);
+
+  const { error } = existing
+    ? await supabase
+        .from("daily_practice_logs")
+        .update({
+          completed,
+          value: clampedValue,
+          completed_at: completed ? new Date().toISOString() : null,
+        })
+        .eq("id", existing.id)
+    : await supabase.from("daily_practice_logs").insert({
+        user_id: user.id,
+        practice_item_id: item.id,
+        date: input.date,
+        completed,
+        value: clampedValue,
+        target_value: targetValue,
+        completed_at: completed ? new Date().toISOString() : null,
+      });
 
   if (error) {
     throw new PracticeActionError("Couldn't save that — please try again.");
@@ -106,7 +160,7 @@ export async function updatePracticeValueAction(input: {
   revalidatePath("/app/progress");
   revalidatePath("/app/history");
 
-  return { value: clampedValue, completed };
+  return { value: clampedValue, targetValue, completed };
 }
 
 /**
@@ -131,6 +185,7 @@ export async function togglePracticeAction(input: {
       date: input.date,
       completed: input.nextCompleted,
       value: input.nextCompleted ? item.target_value : 0,
+      target_value: item.target_value,
       completed_at: input.nextCompleted ? new Date().toISOString() : null,
     },
     { onConflict: "user_id,practice_item_id,date" }
@@ -201,6 +256,7 @@ export async function setPrayerStatusAction(input: {
       date: input.date,
       completed,
       value,
+      target_value: itemData.target_value,
       completed_at: completed ? new Date().toISOString() : null,
     },
     { onConflict: "user_id,practice_item_id,date" }

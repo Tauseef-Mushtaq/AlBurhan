@@ -3,6 +3,9 @@ import { getServerLocale } from "@/lib/i18n/server";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { localeDirection } from "@/lib/i18n/config";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { CalendarX } from "lucide-react";
 import { DateNavigator } from "@/components/history/DateNavigator";
 import { getCurrentTimezone } from "@/lib/practices/queries";
 import { formatDisplayDate, getTodayInTimezone } from "@/lib/date";
@@ -69,6 +72,9 @@ export default async function HistoryPage({
                 csv: t.reports.csv,
                 cancel: t.reports.cancel,
                 generating: t.reports.generating,
+            generatingPdf: t.reports.generatingPdf,
+            generatingImage: t.reports.generatingImage,
+            generatingCsv: t.reports.generatingCsv,
                 error: t.reports.error,
               }}
               csvHref={`/api/reports/daily?date=${date}`}
@@ -116,12 +122,12 @@ export default async function HistoryPage({
               }}
             />
           ) : (
-            <Card className="text-sm text-muted">{t.historyPage.noRecords}</Card>
+            <EmptyState icon={CalendarX} title={t.historyPage.noRecords} />
           )}
         </div>
       </div>
     );
   } catch {
-    return <Card className="text-sm text-muted">{t.historyPage.loadError}</Card>;
+    return <ErrorState title={t.historyPage.loadError} />;
   }
 }

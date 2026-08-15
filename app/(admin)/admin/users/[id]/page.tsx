@@ -13,6 +13,8 @@ import { ReportDownloadButtons } from "@/components/reports/ReportDownloadButton
 import { DateRangeReport } from "@/components/reports/DateRangeReport";
 import { DailyPracticeReport } from "@/components/reports/DailyPracticeReport";
 import { UserHistoryTable } from "@/components/reports/UserHistoryTable";
+import { AdminAdhkarTargetsSection } from "@/components/admin/AdminAdhkarTargetsSection";
+import { getAdhkarTargetSettingsForUser } from "@/lib/admin/adhkarActions";
 
 export default async function AdminUserDetailPage({
   params,
@@ -44,13 +46,14 @@ export default async function AdminUserDetailPage({
   const rangeStart =
     searchParams.start && searchParams.start <= rangeEnd ? searchParams.start : addDays(rangeEnd, -13);
 
-  const [dailyReport, rangeSummary, historyReports] = await Promise.all([
+  const [dailyReport, rangeSummary, historyReports, adhkarTargets] = await Promise.all([
     getDailyReportData(reportDate, locale, profile.userId),
     getRangeReportData(rangeStart, rangeEnd, locale, profile.userId),
     // Reuses the same per-date report builder as the daily report and
     // downloads (lib/reports/queries.ts) — no separate scoring path for
     // the "User History" table below.
     getDailyReportsForRange(rangeStart, rangeEnd, locale, profile.userId),
+    getAdhkarTargetSettingsForUser(profile.userId),
   ]);
 
   const downloadLabels = {
@@ -103,6 +106,8 @@ export default async function AdminUserDetailPage({
           </div>
         </dl>
       </Card>
+
+      <AdminAdhkarTargetsSection userId={profile.userId} rows={adhkarTargets} />
 
       <div>
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-foreground/60">

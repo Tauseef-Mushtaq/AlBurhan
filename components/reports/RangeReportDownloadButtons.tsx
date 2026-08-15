@@ -11,6 +11,7 @@ import type { RangeReportSummary } from "@/lib/reports/types";
 import type { ReportDownloadLabels } from "@/components/reports/ReportDownloadButtons";
 import type { Locale } from "@/lib/i18n/config";
 import { captureReportNode } from "@/lib/reports/captureReportNode";
+import { useToast } from "@/components/ui/Toast";
 
 export function RangeReportDownloadButtons({
   summary,
@@ -36,6 +37,7 @@ export function RangeReportDownloadButtons({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<"pdf" | "image" | null>(null);
   const [error, setError] = useState(false);
+  const { toast } = useToast();
   const nodeRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +78,7 @@ export function RangeReportDownloadButtons({
       setOpen(false);
     } catch {
       setError(true);
+      toast("error", uiLabels.error);
     } finally {
       setBusy(null);
     }
@@ -101,6 +104,7 @@ export function RangeReportDownloadButtons({
       setOpen(false);
     } catch {
       setError(true);
+      toast("error", uiLabels.error);
     } finally {
       setBusy(null);
     }
@@ -151,7 +155,7 @@ export function RangeReportDownloadButtons({
                 <FileText className="h-4 w-4" aria-hidden="true" />
                 {uiLabels.pdf}
               </span>
-              {busy === "pdf" && <span className="text-xs text-muted">{uiLabels.generating}</span>}
+              {busy === "pdf" && <span className="text-xs text-muted">{uiLabels.generatingPdf}</span>}
             </button>
             <button
               type="button"
@@ -164,7 +168,7 @@ export function RangeReportDownloadButtons({
                 <ImageIcon className="h-4 w-4" aria-hidden="true" />
                 {uiLabels.image}
               </span>
-              {busy === "image" && <span className="text-xs text-muted">{uiLabels.generating}</span>}
+              {busy === "image" && <span className="text-xs text-muted">{uiLabels.generatingImage}</span>}
             </button>
             <a
               href={csvSummaryHref}

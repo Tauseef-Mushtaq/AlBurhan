@@ -86,8 +86,16 @@ export interface Dictionary {
       email: string;
       password: string;
       submit: string;
+      submitPending: string;
       switchPrompt: string;
       switchCta: string;
+      checkEmailNotice: string;
+      errors: {
+        invalid_credentials: string;
+        email_not_confirmed: string;
+        missing_fields: string;
+        generic: string;
+      };
     };
     signup: {
       title: string;
@@ -97,8 +105,17 @@ export interface Dictionary {
       password: string;
       confirmPassword: string;
       submit: string;
+      submitPending: string;
       switchPrompt: string;
       switchCta: string;
+      errors: {
+        email_taken: string;
+        weak_password: string;
+        invalid_email: string;
+        missing_fields: string;
+        password_mismatch: string;
+        generic: string;
+      };
     };
   };
   dashboard: {
@@ -131,6 +148,7 @@ export interface Dictionary {
     demoNotice: string;
     emptyCategories: string;
     counterError: string;
+    prayerError: string;
     increment: string;
     decrement: string;
     enterValue: string;
@@ -171,8 +189,21 @@ export interface Dictionary {
     languageSection: string;
     timezoneSection: string;
     save: string;
+    savePending: string;
     saved: string;
     error: string;
+    adhkarTargets: {
+      title: string;
+      description: string;
+      morningGroup: string;
+      eveningGroup: string;
+      currentTarget: string;
+      save: string;
+      savePending: string;
+      saved: string;
+      invalid: string;
+      error: string;
+    };
   };
   admin: {
     nav: {
@@ -207,6 +238,7 @@ export interface Dictionary {
       joined: string;
       lastActivity: string;
       never: string;
+      noUsers: string;
       noResults: string;
       viewDetail: string;
       previous: string;
@@ -256,6 +288,7 @@ export interface Dictionary {
       practiceCompletions: string;
       avgDayScore: string;
       categoryCompletion: string;
+      noData: string;
     };
     roles: {
       admin: string;
@@ -286,6 +319,9 @@ export interface Dictionary {
     csvFull: string;
     cancel: string;
     generating: string;
+    generatingPdf: string;
+    generatingImage: string;
+    generatingCsv: string;
     error: string;
     dailyReportTitle: string;
     rangeReportTitle: string;

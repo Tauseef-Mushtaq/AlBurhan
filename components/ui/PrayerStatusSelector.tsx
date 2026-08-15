@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Check, X, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useToast } from "@/components/ui/Toast";
 import { setPrayerStatusAction } from "@/lib/practices/actions";
 import type { PrayerStatus } from "@/lib/practices/types";
 
@@ -32,6 +33,7 @@ export function PrayerStatusSelector({
   status: PrayerStatus;
 }) {
   const { t } = useLocale();
+  const { toast } = useToast();
   const [current, setCurrent] = useState<PrayerStatus>(status);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -51,7 +53,8 @@ export function PrayerStatusSelector({
         await setPrayerStatusAction({ practiceItemId, date, status: next });
       } catch {
         setCurrent(previous);
-        setError(t.dashboard.counterError);
+        setError(t.dashboard.prayerError);
+        toast("error", t.dashboard.prayerError);
       }
     });
   }

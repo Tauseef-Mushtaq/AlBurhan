@@ -17,6 +17,7 @@ import { getServerLocale } from "@/lib/i18n/server";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { localeDirection } from "@/lib/i18n/config";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = getServerLocale();
@@ -46,7 +47,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
-        <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
+        <LocaleProvider initialLocale={locale}>
+          <ToastProvider>{children}</ToastProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

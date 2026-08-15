@@ -42,8 +42,24 @@ export interface DailyPracticeLog {
   date: string;
   completed: boolean;
   value: number;
+  /** The target applicable on the day this row was created — snapshotted
+   * once, immutable after (see 0007_adhkar_custom_targets.sql). This is
+   * the source of truth for "performed / target" on any day that already
+   * has a log, taking precedence over both the user's current settings
+   * and the practice item's default. */
+  target_value: number;
   notes: string | null;
   completed_at: string | null;
+}
+
+/** A user's current custom target for a practice item (e.g. Istighfar
+ * raised from 30 to 50). Only consulted when creating a *new* daily log
+ * row — never used to reinterpret an existing one. */
+export interface UserPracticeSetting {
+  id: string;
+  user_id: string;
+  practice_item_id: string;
+  target_value: number;
 }
 
 /** A practice item joined with (at most) today's log for the current user. */

@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/Card";
 import { RoleBadge } from "@/components/admin/AdminWidgets";
 import { getAdminUsers } from "@/lib/admin/queries";
 import { formatDisplayDate } from "@/lib/date";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Users } from "lucide-react";
 
 export default async function AdminUsersPage({
   searchParams,
@@ -85,7 +87,7 @@ export default async function AdminUsersPage({
           </table>
         </div>
         {users.length === 0 && (
-          <p className="px-6 py-8 text-center text-sm text-muted">{u.noResults}</p>
+          <EmptyState icon={Users} title={search ? u.noResults : u.noUsers} />
         )}
       </Card>
 

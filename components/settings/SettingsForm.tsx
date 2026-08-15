@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Card, SectionLabel } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { LoadingButton } from "@/components/ui/LoadingButton";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useToast } from "@/components/ui/Toast";
 import { updateSettingsAction } from "@/lib/settings/actions";
 import { COMMON_TIMEZONES } from "@/lib/settings/timezones";
 
@@ -16,6 +17,7 @@ export function SettingsForm({
   initialTimezone: string;
 }) {
   const { t, locale } = useLocale();
+  const { toast } = useToast();
   const copy = t.settingsPage;
 
   const [name, setName] = useState(initialName);
@@ -30,8 +32,10 @@ export function SettingsForm({
       try {
         await updateSettingsAction({ name, language: locale, timezone });
         setStatus("saved");
+        toast("success", copy.saved);
       } catch {
         setStatus("error");
+        toast("error", copy.error);
       }
     });
   }
@@ -89,11 +93,14 @@ export function SettingsForm({
       </Card>
 
       <div className="flex items-center gap-4">
-        <Button type="submit" disabled={isPending}>
+        <LoadingButton type="submit" isLoading={isPending} loadingLabel={copy.savePending}>
           {copy.save}
-        </Button>
-        {status === "saved" && <span className="text-sm text-accent">{copy.saved}</span>}
-        {status === "error" && <span className="text-sm text-red-600">{copy.error}</span>}
+        </LoadingButton>
+        {status === "error" && (
+          <span role="alert" className="text-sm text-red-600">
+            {copy.error}
+          </span>
+        )}
       </div>
     </form>
   );

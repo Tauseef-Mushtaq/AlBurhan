@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Minus, Plus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useToast } from "@/components/ui/Toast";
 import { updatePracticeValueAction } from "@/lib/practices/actions";
 
 /**
@@ -19,9 +20,12 @@ import { updatePracticeValueAction } from "@/lib/practices/actions";
  * practice appears (Morning Adhkar, Evening Adhkar, Quran counts, etc).
  *
  * Optimistic: the displayed value updates immediately on tap/type, then
- * commits via a Server Action, which clamps to [0, target] server-side
- * regardless of what the client sent. On failure the previous value is
- * restored and a short inline error is shown.
+ * commits via a Server Action. The performed value is intentionally NOT
+ * capped at target_value — a user may exceed their target (e.g. 75/50)
+ * and that exact number is what's stored, displayed, and exported. Only
+ * a generous sanity bound (rejecting garbage/NaN/absurd input) is
+ * enforced, server-side, regardless of what the client sent. On failure
+ * the previous value is restored and a short inline error is shown.
  */
 export function PracticeCounter({
   practiceItemId,
@@ -37,6 +41,7 @@ export function PracticeCounter({
   targetValue: number;
 }) {
   const { t } = useLocale();
+  const { toast } = useToast();
   const [displayValue, setDisplayValue] = useState(value);
   const [inputText, setInputText] = useState(String(value));
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +58,7 @@ export function PracticeCounter({
   const completed = displayValue >= targetValue;
 
   function commit(nextValue: number) {
-    const clamped = Math.min(targetValue, Math.max(0, Math.round(nextValue)));
+    const clamped = Math.max(0, Math.round(nextValue));
     const previous = displayValue;
     setDisplayValue(clamped);
     setInputText(String(clamped));
@@ -66,6 +71,7 @@ export function PracticeCounter({
         setDisplayValue(previous);
         setInputText(String(previous));
         setError(t.dashboard.counterError);
+        toast("error", t.dashboard.counterError);
       }
     });
   }
@@ -137,7 +143,7 @@ export function PracticeCounter({
           <button
             type="button"
             aria-label={t.dashboard.increment}
-            disabled={isPending || displayValue >= targetValue}
+            disabled={isPending}
             onClick={() => commit(displayValue + 1)}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/20 text-foreground/70 transition-colors hover:border-foreground/40 disabled:opacity-30"
           >

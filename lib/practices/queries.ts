@@ -6,6 +6,7 @@ import type {
   DailyPracticeLog,
   PracticeCategory,
   PracticeItem,
+  UserPracticeSetting,
 } from "@/lib/practices/types";
 
 export interface UserProfile {
@@ -112,10 +113,34 @@ export const getLogsForDateRange = cache(async function getLogsForDateRange(
   return (data as DailyPracticeLog[]) ?? [];
 });
 
+/**
+ * The signed-in user's custom targets, as a Map<practice_item_id, target>.
+ * Only ever consulted when a *new* daily log row is created — an existing
+ * row's own target_value snapshot always wins (see attachLogsForDate).
+ * Memoized per request like the other lookups here.
+ */
+export const getUserPracticeTargetsMap = cache(async (): Promise<Map<string, number>> => {
+  const user = await getAuthUser();
+  if (!user) return new Map();
+
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("user_practice_settings")
+    .select("practice_item_id, target_value")
+    .eq("user_id", user.id);
+
+  return new Map(
+    ((data as Pick<UserPracticeSetting, "practice_item_id" | "target_value">[]) ?? []).map(
+      (row) => [row.practice_item_id, row.target_value]
+    )
+  );
+});
+
 /** Joins the static category/item structure with one date's logs. */
 export function attachLogsForDate(
   structure: { category: PracticeCategory; items: PracticeItem[] }[],
-  logs: DailyPracticeLog[]
+  logs: DailyPracticeLog[],
+  userTargets: Map<string, number> = new Map()
 ): CategoryWithPractices[] {
   const logsByItemId = new Map<string, DailyPracticeLog>(
     logs.map((log) => [log.practice_item_id, log])
@@ -123,10 +148,23 @@ export function attachLogsForDate(
 
   return structure.map(({ category, items }) => ({
     ...category,
-    items: items.map((item) => ({
-      ...item,
-      log: logsByItemId.get(item.id) ?? null,
-    })),
+    items: items.map((item) => {
+      const log = logsByItemId.get(item.id) ?? null;
+      // Effective target for display/scoring, in priority order:
+      // 1. The log's own snapshot, if a log already exists for this day
+      //    (this is what makes history immune to later settings changes).
+      // 2. The user's current custom setting, if this day hasn't been
+      //    logged yet (so "today, not yet started" shows the right goal
+      //    before the first write creates the snapshot).
+      // 3. The practice item's built-in default (30, or whatever the
+      //    reference data specifies for non-adhkar items).
+      const effectiveTarget = log?.target_value ?? userTargets.get(item.id) ?? item.target_value;
+      return {
+        ...item,
+        target_value: effectiveTarget,
+        log,
+      };
+    }),
   }));
 }
 
@@ -147,10 +185,11 @@ export async function getPracticesForDate(
   const timezone = await getCurrentTimezone();
   const targetDate = date ?? getTodayInTimezone(timezone);
 
-  const [structure, logs] = await Promise.all([
+  const [structure, logs, userTargets] = await Promise.all([
     getCategoriesWithItems(),
     getLogsForDateRange(targetDate, targetDate),
+    getUserPracticeTargetsMap(),
   ]);
 
-  return { date: targetDate, categories: attachLogsForDate(structure, logs) };
+  return { date: targetDate, categories: attachLogsForDate(structure, logs, userTargets) };
 }

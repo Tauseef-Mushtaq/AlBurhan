@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { ReportTemplate, type ReportTemplateLabels } from "@/components/reports/ReportTemplate";
 import type { DailyReportData } from "@/lib/reports/types";
 import { captureReportNode } from "@/lib/reports/captureReportNode";
+import { useToast } from "@/components/ui/Toast";
 
 export interface ReportDownloadLabels {
   download: string;
@@ -15,6 +16,9 @@ export interface ReportDownloadLabels {
   csv: string;
   cancel: string;
   generating: string;
+  generatingPdf: string;
+  generatingImage: string;
+  generatingCsv: string;
   error: string;
 }
 
@@ -45,7 +49,9 @@ export function ReportDownloadButtons({
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<"pdf" | "image" | null>(null);
+  const [csvPending, setCsvPending] = useState(false);
   const [error, setError] = useState(false);
+  const { toast } = useToast();
   const nodeRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -86,6 +92,7 @@ export function ReportDownloadButtons({
       setOpen(false);
     } catch {
       setError(true);
+      toast("error", uiLabels.error);
     } finally {
       setBusy(null);
     }
@@ -113,6 +120,7 @@ export function ReportDownloadButtons({
       setOpen(false);
     } catch {
       setError(true);
+      toast("error", uiLabels.error);
     } finally {
       setBusy(null);
     }
@@ -167,7 +175,7 @@ export function ReportDownloadButtons({
                 <FileText className="h-4 w-4" aria-hidden="true" />
                 {uiLabels.pdf}
               </span>
-              {busy === "pdf" && <span className="text-xs text-muted">{uiLabels.generating}</span>}
+              {busy === "pdf" && <span className="text-xs text-muted">{uiLabels.generatingPdf}</span>}
             </button>
             <button
               type="button"
@@ -181,16 +189,30 @@ export function ReportDownloadButtons({
                 <ImageIcon className="h-4 w-4" aria-hidden="true" />
                 {uiLabels.image}
               </span>
-              {busy === "image" && <span className="text-xs text-muted">{uiLabels.generating}</span>}
+              {busy === "image" && <span className="text-xs text-muted">{uiLabels.generatingImage}</span>}
             </button>
             <a
               href={csvHref}
               role="menuitem"
-              className="flex min-h-[44px] items-center gap-2 rounded-md border border-border px-3 py-2.5 text-sm transition-colors hover:border-accent/50"
-              onClick={() => setOpen(false)}
+              aria-busy={csvPending}
+              className="flex min-h-[44px] items-center justify-between gap-2 rounded-md border border-border px-3 py-2.5 text-sm transition-colors hover:border-accent/50"
+              onClick={() => {
+                setCsvPending(true);
+                // A CSV href is a same-tab file download, not a page
+                // navigation — the dropdown would otherwise never get a
+                // chance to render "Preparing CSV…" before unmounting.
+                // Close shortly after so the click still feels quick.
+                setTimeout(() => {
+                  setCsvPending(false);
+                  setOpen(false);
+                }, 900);
+              }}
             >
-              <Table className="h-4 w-4" aria-hidden="true" />
-              {uiLabels.csv}
+              <span className="flex items-center gap-2">
+                <Table className="h-4 w-4" aria-hidden="true" />
+                {uiLabels.csv}
+              </span>
+              {csvPending && <span className="text-xs text-muted">{uiLabels.generatingCsv}</span>}
             </a>
           </div>
           {error && <p className="mt-3 text-xs text-red-600" role="alert">{uiLabels.error}</p>}
